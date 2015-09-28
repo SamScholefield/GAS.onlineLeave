@@ -1,0 +1,602 @@
+<script>
+
+var reason = {
+                a: 'a. One\'s own wedding',
+                b: 'b. Participation in the wedding of children, siblings or parents',
+                c: 'c. The death of a spouse, child or parent',
+                d: 'd. The death of a sibling or parent-in-law',
+                e: 'e. The birth of a child, to wife or life companion',
+                f: 'f. Participation at the burial of a spouse, life companion, parent, child, parent-in-law, sibling or grandparent',
+                g: 'g. Terminal illness or medical emergency for an immediate family member (spouse, life companion, parent, child, sibling)',
+                h: 'h. Moving to a new house',
+                i: 'i. Summons by a court of law or other official body',
+                j: 'j. Medical treatment',
+                k: 'k. Providing care',
+                l: 'l. Child beginning school for the first time',
+                m: 'm. Before call up for military service or Zivildienst',
+                n: 'n. Personal business for which absence is absolutely unavoidable'
+              }
+                
+
+function userMain(user){
+  $('#container').empty();
+  console.log('user: ' + user);
+  $('<div/>').attr({id:'page_header'}).appendTo('#container');
+  $('<h1/>').text('Online Leave Request System').appendTo('#page_header');
+  $('<p/>').text('You are logged in as: ').attr({id: 'logtext'}).appendTo('#page_header');
+  $('<label/>').text(user[1]).attr({id: 'user_text'}).appendTo('#logtext');
+  $('<label/>').text(user[0]).attr({id: 'user_label'}).appendTo('#logtext');
+  $('<p/>').text('Create a new leave request as: ').attr({id: 'prilabel'}).appendTo('#page_header');
+  $('<input/>').attr({type: 'button', id: 'primaryCreate', value: 'Primary', class: 'action loadForm'}).appendTo('#prilabel');
+  $('<p/>').text('Create a new leave request as: ').attr({id: 'seclabel'}).appendTo('#page_header');
+  $('<input/>').attr({type: 'button', id: 'secondaryCreate', value: 'Secondary', class: 'action loadForm'}).appendTo('#seclabel');
+  $('<div/>').attr({id: 'active_requests'}).appendTo('#container');
+  $('<h1/>').text('Your active leave requests').appendTo('#active_requests');
+  $('<div/>').attr({id: 'active_table'}).appendTo('#active_requests');
+  $('<div/>').attr({id: 'archive_requests'}).appendTo('#container');
+  $('<h1/>').text('Your archived leave requests').appendTo('#archive_requests');
+  $('<div/>').attr({id: 'archive_table'}).appendTo('#archive_requests');
+  
+  $("#primaryCreate").click(function(){
+    loadPriForm(user);
+  });
+  
+  $("#secondaryCreate").click(function() {
+    loadSecForm(user);
+  });
+  
+  var element = document.getElementById('page_header');
+
+  element.scrollIntoView();
+  console.log('page created and handlers assigned');
+  
+}
+
+function createActiveTable(){
+ 
+   google.script.run.withSuccessHandler(buildActiveTable).getActiveObjects();
+ 
+};
+
+function buildActiveTable(dataObjects){
+  
+  var user = $('#user_label').text();
+  
+  var recordCount = 0;
+  
+  var str = '<table><thead><tr><th>Start</th><th>End</th><th>Submitted on</th><th>Reason</th><th style="text-align:center">Status</th><th style="text-align:center">Action</th></tr></thead><tbody>';
+  
+  for(var i = 0; i < dataObjects.length; i++){
+    if(dataObjects[i].userid == user && (dataObjects[i].approvallevel == 1 || dataObjects[i].approvallevel == 2)){    
+      str = str + '<tr>';
+      str = str + '<td>' + shortDate(dataObjects[i].startdate) + " at " + shortTime(dataObjects[i].starttime) + '</td>';
+      //str = str + '<td>' + (dataObjects[i].startdate.split("00:"))[0] + " at " + (dataObjects[i].starttime.split(" "))[4] + '</td>';
+      str = str + '<td>' + shortDate(dataObjects[i].enddate) + " at " + shortTime(dataObjects[i].endtime) + '</td>';
+      //str = str + '<td>' + (dataObjects[i].enddate.split("00:"))[0] + " at " + (dataObjects[i].endtime.split(" "))[4] + '</td>';
+      str = str + '<td>' + shortDate(dataObjects[i].submitted) + " at " + shortTime(dataObjects[i].submitted) + '</td>';
+      //str = str + '<td>' + (dataObjects[i].submitted.split("G"))[0] +'</td>';
+      str = str + '<td>' + reason[dataObjects[i].option] + '</td>';
+      str = str + '<td style="text-align:center">' + dataObjects[i].status +'</td>';
+      str = str + '<td style="text-align:center"><input type="button" id="' + dataObjects[i].requestid + '" class="create cancel" value="Cancel"></input></td>';
+      str = str + '</tr>';
+      recordCount++;      
+    }
+  }    
+    
+  str = str + '</tbody></table>';
+ 
+  if(recordCount == 0){str = '> You have no active leave requests at this time'};
+    
+  $('#active_table').html(str);
+  $("tbody tr:odd").addClass("odd");
+  $('.cancel').click(function(){
+    confirmCancelRequest(this.id);
+    console.log(this.id);
+  });
+  
+  }
+  
+  function createArchiveTable(){
+ 
+   google.script.run.withSuccessHandler(buildArchiveTable).getActiveObjects();
+ 
+  };
+
+function buildArchiveTable(dataObjects){
+  
+  var user = $('#user_label').text();
+  var recordCount = 0;
+  
+  var str = '<table><thead><tr><th>Start</th><th>End</th><th>Submitted on</th><th>Reason</th><th style="text-align:center">Status</th></tr></thead><tbody>';
+  
+  for(var i = 0; i < dataObjects.length; i++){
+  
+    if(dataObjects[i].userid == user && (dataObjects[i].approvallevel == 0 || dataObjects[i].approvallevel == 3)){    
+      str = str + '<tr>';
+      str = str + '<td>' + shortDate(dataObjects[i].startdate) + " at " + shortTime(dataObjects[i].starttime) + '</td>';
+      str = str + '<td>' + shortDate(dataObjects[i].enddate) + " at " + shortTime(dataObjects[i].endtime) + '</td>';
+      str = str + '<td>' + shortDate(dataObjects[i].submitted) + " at " + shortTime(dataObjects[i].submitted) +'</td>';
+      str = str + '<td>' + reason[dataObjects[i].option] + '</td>';
+      str = str + '<td style="text-align:center">' + dataObjects[i].status +'</td>';
+      str = str + '</tr>';
+      recordCount++;      
+    }
+  }    
+    
+  str = str + '</tbody></table>';
+  
+  if(recordCount == 0){str = '> You have no archived leave requests at this time'};
+    
+  $('#archive_table').html(str);
+  $('tbody tr:odd').addClass('odd');
+  
+}
+
+function confirmCancelRequest(id){
+    
+  if(confirm('Are you sure you want to cancel this leave request?')){
+  console.log('cancelled')
+    $('#container').empty();
+    var str = '<div id="loading"><img style="display:block" src="https://drive.google.com/uc?export=view&id=0B5muPtWv8w2OM0x1d3I3YmtHdzg"></div>'
+    $('#container').html(str);
+    google.script.run.withSuccessHandler(cancelRequest).getCancelObjects(id);
+  }else{
+    return;
+  }
+}
+
+function cancelRequest(){
+  //this rebuilds the main page
+  google.script.run.withSuccessHandler(name).getLoggedInUser();  
+};
+
+function loadPriForm(user){
+    
+    $("#container").empty();
+    
+    $('<div/>').attr({id:'page_header'}).appendTo('#container');
+    $('<h1/>').text('Primary School Leave Request').appendTo('#page_header');
+    
+    $('<div/>').attr({id: 'form_container'}).appendTo('#container');
+    $('<div/>').attr({id: 'error_console'}).appendTo('#container');
+    
+    $('<form/>').attr({id: 'primary_form'}).appendTo('#form_container');
+    $('<fieldset/>').attr({id: 'time_date'}).appendTo('#primary_form');
+    $('<legend/>').text('Leave Time and Date').appendTo('#time_date');
+    
+    $('<p/>').attr({id: 'startdatepara'}).appendTo('#time_date');
+    $('<label/>').text('Start date: ').attr({id: 'startdatelabel'}).appendTo('#startdatepara');
+    $('<input/>').attr({type: 'date', id: 'start_date', name: 'start_date'}).appendTo('#startdatepara');
+    
+    $('<p/>').attr({id: 'starttimepara'}).appendTo('#time_date');
+    $('<label/>').text('Start time: ').attr({id: 'starttimelabel'}).appendTo('#starttimepara');
+    $('<input/>').attr({type: 'time', id: 'start_time', name: 'start_time'}).appendTo('#starttimepara');
+    
+    $('<p/>').attr({id: 'enddatepara'}).appendTo('#time_date');
+    $('<label/>').text('End date: ').attr({id: 'enddatelabel'}).appendTo('#enddatepara');
+    $('<input/>').attr({type: 'date', id: 'end_date', name: 'end_date'}).appendTo('#enddatepara');
+    
+    $('<p/>').attr({id: 'endtimepara'}).appendTo('#time_date');
+    $('<label/>').text('End time: ').attr({id: 'endtimelabel'}).appendTo('#endtimepara');
+    $('<input/>').attr({type: 'time', id: 'end_time', name: 'end_time'}).appendTo('#endtimepara');
+    
+    $('<fieldset/>').attr({id: 'leave_reason'}).appendTo('#primary_form');
+    $('<legend/>').text('Leave Reason').appendTo('#leave_reason');
+    
+    $('<p/>').attr({id: 'optiona'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'a'}).appendTo('#optiona');
+    $('<label/>').text(reason.a).appendTo('#optiona');
+    
+    $('<p/>').attr({id: 'optionb'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'b'}).appendTo('#optionb');
+    $('<label/>').text(reason.b).appendTo('#optionb');
+    
+    $('<p/>').attr({id: 'optionc'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'c'}).appendTo('#optionc');
+    $('<label/>').text(reason.c).appendTo('#optionc');
+    
+    $('<p/>').attr({id: 'optiond'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'd'}).appendTo('#optiond');
+    $('<label/>').text(reason.d).appendTo('#optiond');
+    
+    $('<p/>').attr({id: 'optione'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'e'}).appendTo('#optione');
+    $('<label/>').text(reason.e).appendTo('#optione');
+    
+    $('<p/>').attr({id: 'optionf'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'f'}).appendTo('#optionf');
+    $('<label/>').text(reason.f).appendTo('#optionf');
+    
+    $('<p/>').attr({id: 'optiong'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'g'}).appendTo('#optiong');
+    $('<label/>').text(reason.g).appendTo('#optiong');
+    
+    $('<p/>').attr({id: 'optionh'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'h'}).appendTo('#optionh');
+    $('<label/>').text(reason.h).appendTo('#optionh');
+    
+    $('<p/>').attr({id: 'optioni'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'i'}).appendTo('#optioni');
+    $('<label/>').text(reason.i).appendTo('#optioni');
+    
+    $('<p/>').attr({id: 'optionj'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'j'}).appendTo('#optionj');
+    $('<label/>').text(reason.j).appendTo('#optionj');
+    
+    $('<p/>').attr({id: 'optionk'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'k'}).appendTo('#optionk');
+    $('<label/>').text(reason.k).appendTo('#optionk');
+    
+    $('<p/>').attr({id: 'optionl'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'l'}).appendTo('#optionl');
+    $('<label/>').text(reason.l).appendTo('#optionl');
+    
+    $('<p/>').attr({id: 'optionm'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'm'}).appendTo('#optionm');
+    $('<label/>').text(reason.m).appendTo('#optionm');
+    
+    $('<p/>').attr({id: 'opttextpara'}).appendTo('#leave_reason');
+    $('<label/>').attr({for: '#opt_text', id: 'opt_text_label', class: 'textboxlabel'}).text('If you have selected reason A - M you can OPTIONALLY add any relevant details in the space below:').appendTo('#opttextpara');
+    $('<textarea/>').attr({id: 'opt_text', name: 'opt_text'}).appendTo('#opttextpara');
+    
+    $('<p/>').attr({id: 'optionn'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'n'}).appendTo('#optionn');
+    $('<label/>').text(reason.n).appendTo('#optionn');
+    
+    $('<p/>').attr({id: 'mantextpara'}).appendTo('#leave_reason');
+    $('<label/>').attr({for: '#man_text', id: 'man_text_label', class: 'textboxlabel'}).text('If you have selected reason N you MUST provide specific details in the space below:').appendTo('#mantextpara');
+    $('<textarea/>').attr({id: 'man_text', name: 'man_text'}).appendTo('#mantextpara');
+    
+    $('<fieldset/>').attr({id: 'additional_details'}).appendTo('#primary_form');
+    $('<legend/>').text('Additional details').appendTo('#additional_details');
+    
+    $('<p/>').attr({id: 'subreqpara'}).appendTo('#additional_details');
+    $('<input/>').attr({type: 'checkbox', id: 'sub_req', name: 'sub_req'}).appendTo('#subreqpara');
+    $('<label/>').text('Substitute required?').appendTo('#subreqpara');
+    
+    $('<p/>').attr({id: 'subtextpara'}).appendTo('#additional_details');
+    $('<label/>').attr({for: '#sub_text', id: 'sub_text_label', class: 'textboxlabel'}).text('Substitute requirement information (please indicate any specialist lessons, duties, trips, activities etc.):').appendTo('#subtextpara');
+    $('<textarea/>').attr({id: 'sub_text', name: 'sub_text'}).appendTo('#subtextpara');
+    
+    $('<p/>').attr({id: 'inttextpara'}).appendTo('#additional_details');
+    $('<label/>').attr({for: '#int_text', id: 'int_text_label', class: 'textboxlabel'}).text('If internal and/or self release please describe the arrangements below:').appendTo('#inttextpara');
+    $('<textarea/>').attr({id: 'int_text', name: 'int_text'}).appendTo('#inttextpara');    
+    
+    $('<h1/>').attr({id: 'section_buttons'}).appendTo('#primary_form');
+    $('<input/>').attr({type: 'button', id: 'form_submit', class: 'action', value: 'Submit'}).appendTo('#section_buttons');
+    $('<input/>').attr({type: 'button', id: 'form_cancel', value: 'Cancel'}).appendTo('#section_buttons');
+    
+    
+    $('<input/>').attr({id: 'form_user', name: 'form_user', value: user[0]}).appendTo('#primary_form');
+    $('<input/>').attr({id: 'form_user_name', name: 'form_user_name', value: user[1]}).appendTo('#primary_form');
+    $('<input/>').attr({id: 'form_type', name: 'form_type', value: 'primary'}).appendTo('#primary_form');
+    
+    $("#form_submit").click(function(){
+      validateForm(this.parentNode.parentNode);
+    });
+    
+    $("#form_cancel").click(function(){
+      reload();
+    });
+    
+    var element = document.getElementById('page_header');
+
+    element.scrollIntoView();
+    
+ };
+ 
+ function loadSecForm(user){
+    
+    $("#container").empty();
+    
+    $('<div/>').attr({id:'page_header'}).appendTo('#container');
+    $('<h1/>').text('Secondary School Leave Request').appendTo('#page_header');
+    
+    $('<div/>').attr({id: 'form_container'}).appendTo('#container');
+    $('<div/>').attr({id: 'error_console'}).appendTo('#container');
+    
+    $('<form/>').attr({id: 'secondary_form'}).appendTo('#form_container');
+    $('<fieldset/>').attr({id: 'time_date'}).appendTo('#secondary_form');
+    $('<legend/>').text('Leave Time and Date').appendTo('#time_date');
+    
+    $('<p/>').attr({id: 'startdatepara'}).appendTo('#time_date');
+    $('<label/>').text('Start date: ').attr({id: 'startdatelabel'}).appendTo('#startdatepara');
+    $('<input/>').attr({type: 'date', id: 'start_date', name: 'start_date'}).appendTo('#startdatepara');
+    
+    $('<p/>').attr({id: 'starttimepara'}).appendTo('#time_date');
+    $('<label/>').text('Start time: ').attr({id: 'starttimelabel'}).appendTo('#starttimepara');
+    $('<input/>').attr({type: 'time', id: 'start_time', name: 'start_time'}).appendTo('#starttimepara');
+    
+    $('<p/>').attr({id: 'enddatepara'}).appendTo('#time_date');
+    $('<label/>').text('End date: ').attr({id: 'enddatelabel'}).appendTo('#enddatepara');
+    $('<input/>').attr({type: 'date', id: 'end_date', name: 'end_date'}).appendTo('#enddatepara');
+    
+    $('<p/>').attr({id: 'endtimepara'}).appendTo('#time_date');
+    $('<label/>').text('End time: ').attr({id: 'endtimelabel'}).appendTo('#endtimepara');
+    $('<input/>').attr({type: 'time', id: 'end_time', name: 'end_time'}).appendTo('#endtimepara');
+    
+    $('<fieldset/>').attr({id: 'leave_reason'}).appendTo('#secondary_form');
+    $('<legend/>').text('Leave Reason').appendTo('#leave_reason');
+    
+    $('<p/>').attr({id: 'optiona'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'a'}).appendTo('#optiona');
+    $('<label/>').text(reason.a).appendTo('#optiona');
+    
+    $('<p/>').attr({id: 'optionb'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'b'}).appendTo('#optionb');
+    $('<label/>').text(reason.b).appendTo('#optionb');
+    
+    $('<p/>').attr({id: 'optionc'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'c'}).appendTo('#optionc');
+    $('<label/>').text(reason.c).appendTo('#optionc');
+    
+    $('<p/>').attr({id: 'optiond'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'd'}).appendTo('#optiond');
+    $('<label/>').text(reason.d).appendTo('#optiond');
+    
+    $('<p/>').attr({id: 'optione'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'e'}).appendTo('#optione');
+    $('<label/>').text(reason.e).appendTo('#optione');
+    
+    $('<p/>').attr({id: 'optionf'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'f'}).appendTo('#optionf');
+    $('<label/>').text(reason.f).appendTo('#optionf');
+    
+    $('<p/>').attr({id: 'optiong'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'g'}).appendTo('#optiong');
+    $('<label/>').text(reason.g).appendTo('#optiong');
+    
+    $('<p/>').attr({id: 'optionh'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'h'}).appendTo('#optionh');
+    $('<label/>').text(reason.h).appendTo('#optionh');
+    
+    $('<p/>').attr({id: 'optioni'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'i'}).appendTo('#optioni');
+    $('<label/>').text(reason.i).appendTo('#optioni');
+    
+    $('<p/>').attr({id: 'optionj'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'j'}).appendTo('#optionj');
+    $('<label/>').text(reason.j).appendTo('#optionj');
+    
+    $('<p/>').attr({id: 'optionk'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'k'}).appendTo('#optionk');
+    $('<label/>').text(reason.k).appendTo('#optionk');
+    
+    $('<p/>').attr({id: 'optionl'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'l'}).appendTo('#optionl');
+    $('<label/>').text(reason.l).appendTo('#optionl');
+    
+    $('<p/>').attr({id: 'optionm'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'm'}).appendTo('#optionm');
+    $('<label/>').text(reason.m).appendTo('#optionm');
+    
+    $('<p/>').attr({id: 'opttextpara'}).appendTo('#leave_reason');
+    $('<label/>').attr({for: '#opt_text', id: 'opt_text_label', class: 'textboxlabel'}).text('If you have selected reason A - M you can OPTIONALLY add any relevant details in the space below:').appendTo('#opttextpara');
+    $('<textarea/>').attr({id: 'opt_text', name: 'opt_text'}).appendTo('#opttextpara');
+    
+    $('<p/>').attr({id: 'optionn'}).appendTo('#leave_reason');
+    $('<input/>').attr({type: 'radio', name: 'option', id: 'option', value: 'n'}).appendTo('#optionn');
+    $('<label/>').text(reason.n).appendTo('#optionn');
+    
+    $('<p/>').attr({id: 'mantextpara'}).appendTo('#leave_reason');
+    $('<label/>').attr({for: '#man_text', id: 'man_text_label', class: 'textboxlabel'}).text('If you have selected reason N you MUST provide specific details in the space below:').appendTo('#mantextpara');
+    $('<textarea/>').attr({id: 'man_text', name: 'man_text'}).appendTo('#mantextpara');
+    
+    $('<h1/>').attr({id: 'section_buttons'}).appendTo('#secondary_form');
+    $('<input/>').attr({type: 'button', id: 'form_submit', class: 'action', value: 'Submit'}).appendTo('#section_buttons');
+    $('<input/>').attr({type: 'button', id: 'form_cancel', value: 'Cancel'}).appendTo('#section_buttons');
+    
+    $('<input/>').attr({id: 'form_user', name: 'form_user', value: user[0]}).appendTo('#secondary_form');
+    $('<input/>').attr({id: 'form_user_name', name: 'form_user_name', value: user[1]}).appendTo('#secondary_form');
+    $('<input/>').attr({id: 'form_type', name: 'form_type', value: 'secondary'}).appendTo('#secondary_form'); 
+    
+    $("#form_submit").click(function(){
+      validateForm(this.parentNode.parentNode);
+    });
+    
+    $("#form_cancel").click(function(){
+      reload();
+    });
+    
+    var element = document.getElementById('page_header');
+
+    element.scrollIntoView();
+    
+ };
+ 
+ function validateForm(form){
+  
+    console.log('validation called 222');
+    console.log($('input[name="option"]:checked').val());
+    console.log($('#opt_text').val());
+    console.log($('#man_text').val());
+    
+    $('#error_console').empty();
+    $("form").find(":input:not(:button)").attr('style', '').attr('class', '');
+    
+    var errorCount = 0;
+    
+    //SET TODAY
+    var todayFull = new Date();
+    var today = new Date(todayFull.setHours(0,0,0,0)).getTime();
+        
+    //START DATE VALIDATION
+    var startDateFull = $('#start_date').val().toString();    
+    /*startDateFull = startDateFull.split("-");    
+    var startYear = startDateFull[0];
+    var startMonth = startDateFull[1] - 1;
+    var startDay = startDateFull[2];    
+    var startDate = new Date(startYear, startMonth, startDay);
+    startDate = new Date(startDate.setHours(0,0,0,0)).getTime();*/
+    var startDate = new Date(startDateFull).getTime();
+    
+    if(startDate == today){console.log('match');}else{console.log('no match');};
+        
+    ////No start date
+    $('#start_date').attr('style', '').attr('class', '');
+    if($('#start_date').val() == ""){
+      $('#error_console').append('<p>You must provide a start date</p>');
+      $('#start_date').addClass('input_error');
+      console.log('no start date input');
+      errorCount ++;
+    };    
+    
+    ////Start date in past or today
+    if(startDate >= today){
+      console.log('valid start date');
+    }else{
+      $('#error_console').append('<p>Start date must not be in the past</p>');
+      $('#start_date').addClass("input_error");
+      console.log('invalid start date');
+      errorCount ++;
+    };
+       
+    //END DATE VALIDATION
+    var endDateFull = $('#end_date').val().toString();    
+    /*endDateFull = endDateFull.split("-");    
+    var endYear = endDateFull[0];
+    var endMonth = endDateFull[1] - 1;
+    var endDay = endDateFull[2];    
+    var endDate = new Date(endYear, endMonth, endDay);*/
+    var endDate = new Date(endDateFull).getTime();    
+    
+    ////No end date
+    $('#end_date').attr('style', '').attr('class', '');
+    $('#end_date').removeClass("input_error");
+    if($('#end_date').val() == ""){
+      $('#error_console').append('<p>You must provide an end date</p>');
+      $('#end_date').addClass("input_error");
+      console.log('no end date input');
+      errorCount ++;
+    };    
+    
+    ////End date before start date
+    if(startDate == "Invalid Date" || endDate > startDate || endDate == startDate){
+      console.log('valid end date');
+    }else{
+      $('#error_console').append('<p>End date must occur after start date</p>');
+      console.log(startDate);
+      console.log(endDate);
+      $('#end_date').addClass("input_error");
+      console.log('invalid end date');
+      errorCount ++;
+    };
+    
+    //TIME VALIDATION
+    var startTime = $('#start_time').val().toString();
+    var endTime = $('#end_time').val().toString();
+    
+    $('#start_time').attr('style', '').attr('class', '');
+    $('#end_time').attr('style', '').attr('class', '');
+    
+    if($('#start_time').val() == ""){
+      $('#error_console').append('<p>You must provide a start time</p>');
+      $('#start_time').addClass("input_error");
+      console.log('no start time input');
+      errorCount ++;
+    };
+    
+    if($('#end_time').val() == ""){
+      $('#error_console').append('<p>You must provide an end time</p>');
+      $('#end_time').addClass("input_error");
+      console.log('no end time input');
+      errorCount ++;
+    };
+    
+    //SAME DAY VALIDATION
+    if(startDate == endDate && startTime > endTime){
+      console.log('same day validation called');
+      $('#start_time').addClass("input_error");
+      $('#end_time').addClass("input_error");
+      $('#error_console').append('<p>End time must be later than start time</p>');
+      errorCount++;
+    };
+     
+   
+    //OPTION VALIDATION
+    console.log($('input[name="option"]:checked').val());
+    $('#man_text').attr('style', '').attr('class', '');
+    
+    if($('input[name="option"]:checked').val() === undefined){
+      console.log('no option selected');
+      $('#error_console').append('<p>You must select a leave reason</p>');
+      errorCount++;
+    }else if($('input[name="option"]:checked').val() == 'n' && $('#man_text').val() == ''){
+      console.log('reason n given, no text supplied');
+      $('#error_console').append('<p>You must provide specific details to support your leave reason</p>');
+      $('#man_text').addClass("input_error");
+      errorCount++;      
+    };
+    
+    //VALIDATE TEXT FIELDS
+    if($('input[name="option"]:checked').val() == 'n' && $('#opt_text').val() != ''){
+      $('#error_console').append('<p>For leave reason N please use only the mandatory text area only for your supporting information</p>');
+      $('#opt_text').addClass("input_error");
+      errorCount++;
+    }
+    
+    if($('input[name="option"]:checked').val() != 'n' && $('#man_text').val() != ''){
+      $('#error_console').append('<p>For leave reasons A-M please use only the optional text area for your supporting information</p>');
+      $('#man_text').addClass("input_error");
+      errorCount++;
+    }
+    
+    console.log('error count -> ' + errorCount);
+      
+    ////Highlight errors
+    $('.input_error').attr('style', "border:#D50F25 1px solid;");
+    
+    if(errorCount > 0){
+    console.log('errors be here, attend to them');
+    return;
+    };
+    
+    /*var startTime = $('#start_time').val();
+    var endDate = $('#end_date').val();
+    var endTime = $('#end_time').val();
+    var optText = $('#opt_text').val();
+    var manText = $('#man_text').val();
+    var subText = $('#sub_text').val();
+    var intText = $('#int_text').val();
+    var leaveOption = $('input[name="option"]:checked').val();*/
+    console.log('running processForm');
+    google.script.run.withSuccessHandler(reload).processForm(form);
+  
+  };
+ 
+ function reload(){
+    
+   $('#container').empty();
+   google.script.run.withSuccessHandler(name).getLoggedInUser();
+ 
+ }
+ 
+ function shortDate(dateString){
+    
+ var d = new Date(dateString);
+ var dayArray = ['Sun', 'Mon','Tue','Wed','Thu','Fri','Sat'];
+ var monthArray = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+ var curr_day = d.getDay();
+ var curr_date = d.getDate();
+ var curr_month = d.getMonth();
+ var curr_year = d.getFullYear();  
+ var shortDate = dayArray[curr_day] + " " + monthArray[curr_month] + " " + pad(curr_date) + " " + curr_year;
+
+ return shortDate;
+    
+}
+
+function shortTime(time) {
+    var d = new Date(time);
+    var h = pad(d.getHours());
+    var m = pad(d.getMinutes());
+    return h + ":" + m;
+}
+
+function pad(n){
+  var pad = "";  
+  if(n < 10){pad = "0" + n}else{pad = n};  
+  return pad;
+}
+
+</script>
