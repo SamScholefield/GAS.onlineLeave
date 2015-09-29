@@ -116,7 +116,7 @@ function processForm(form) {
   var option = form.option;
   var approvallevel = 1;
   
-  if(requesttype == 'primary'){var withapprover = 'clang@student.vis.ac.at';}else{var withapprover = 'estanners@student.vis.ac.at';};
+  if(requesttype == 'primary'){var withapprover = 'primaryPrincipal';}else{var withapprover = 'secondaryPrincipal';};
   
   if(form.sub_req == undefined){
     var subreq = 'No sub required';
