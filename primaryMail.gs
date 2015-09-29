@@ -9,7 +9,7 @@ function primaryMail(userMail, userName, startDate, startTime, endDate, endTime,
  
   //MAIL TO PRIMARY SECTION APPROVER
   MailApp.sendEmail({
-          to: "sscholefield@student.vis.ac.at",
+          to: "Approver mail",
           subject: "Leave request for " + userName + " awaiting action",
           htmlBody: "<p STYLE='font-family: sans-serif'>" + "Hello, <br><br>" +           
                     "The following leave request has been submitted and is awaiting your approval.<br><br>" +
@@ -26,7 +26,7 @@ function primaryMail(userMail, userName, startDate, startTime, endDate, endTime,
   
  /* //MAIL TO PRIMARY SECTION OFFICE
   MailApp.sendEmail({
-          to: "sscholefield@student.vis.ac.at",
+          to: "approver Mail",
           subject: "Leave request for " + userName + " has been submitted",
           htmlBody: "<p STYLE='font-family: sans-serif'>" + "Hello, <br><br>" +           
                     "The following leave request has been submitted and is awaiting approval by the Primary Principal.<br><br>" +
