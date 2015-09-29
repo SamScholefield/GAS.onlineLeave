@@ -6,7 +6,7 @@ function secondaryMail(userMail, userName, startDate, startTime, endDate, endTim
   
   //MAIL TO SECONDARY SECTION APPROVER
   MailApp.sendEmail({
-          to: "sscholefield@student.vis.ac.at",
+          to: "approver Mail",
           subject: "Leave request for " + userName + " awaiting action",
           htmlBody: "<p STYLE='font-family: sans-serif'>" + "Hello, <br><br>" +           
                     "The following leave request has been submitted and is awaiting your approval.<br><br>" +
@@ -22,7 +22,7 @@ function secondaryMail(userMail, userName, startDate, startTime, endDate, endTim
   
  /* //MAIL TO SECONDARY SECTION OFFICE
   MailApp.sendEmail({
-          to: "sscholefield@student.vis.ac.at",
+          to: "approver Mail",
           subject: "Leave request for " + userName + " has been submitted",
           htmlBody: "<p STYLE='font-family: sans-serif'>" + "Hello, <br><br>" +           
                     "The following leave request has been submitted and is awaiting approval by the Secondary Principal.<br><br>" +
